@@ -51,7 +51,7 @@ unit LazSerial;
 interface
 
 uses
-{$IFDEF LINUX}
+{$IFDEF UNIX }
   Classes,
 {$IFDEF UseCThreads}
   cthreads,

@@ -330,6 +330,9 @@ type
     FAtTimeout: integer;
     FInterPacketTimeout: Boolean;
     FComNr: integer;
+{$IFDEF UNIX}           // RPH - 14May2016, to support O_NonBlock for open
+    FNonBlock: Boolean;
+{$ENDIF}
 {$IFDEF MSWINDOWS}
     FPortAddr: Word;
     function CanEvent(Event: dword; Timeout: integer): boolean;
@@ -757,6 +760,12 @@ type
     {:If @true (default), then all timeouts is timeout between two characters.
      If @False, then timeout is overall for whoole reading operation.}
     property InterPacketTimeout: Boolean read FInterPacketTimeout Write FInterPacketTimeout;
+
+{$IFDEF UNIX}           // RPH 14May2016, to support O_NonBlock for open
+    {:If @true, then the call to open on Unix systems is non-blocking.
+     If @False (default), then the call to open can be blocked by CTS, DSR or Carrier.}
+    property NonBlock: Boolean read FNonBlock write FNonBlock;
+{$ENDIF}
   end;
 
 {:Returns list of existing computer serial ports. Working properly only in Windows!}
@@ -790,6 +799,9 @@ begin
   FLastLF := False;
   FAtTimeout := 1000;
   FInterPacketTimeout := True;
+{$IFDEF UNIX}           // RPH 14May2016, to support O_NonBlock for open
+  FNonBlock := False;
+{$ENDIF}
 end;
 
 destructor TBlockSerial.Destroy;
@@ -931,6 +943,10 @@ procedure TBlockSerial.Connect(comport: string);
 var
   CommTimeouts: TCommTimeouts;
 {$ENDIF}
+{$IFDEF UNIX}           // RPH - 14May2016, to support O_NonBlock for open
+var
+  SerialFlags: cInt;
+{$ENDIF}
 begin
   // Is this TBlockSerial Instance already busy?
   if InstanceActive then           {HGJ}
@@ -963,7 +979,10 @@ begin
 {$IFNDEF FPC}
   FHandle := THandle(Libc.open(pchar(FDevice), O_RDWR or O_SYNC));
 {$ELSE}
-  FHandle := THandle(fpOpen(FDevice, O_RDWR or O_SYNC));
+  SerialFlags := O_RdWr or O_Sync;
+  if NonBlock then              // RPH - 14May2016, support for non-blocking open
+    SerialFlags := SerialFlags or O_NonBlock;
+  FHandle := THandle(fpOpen(FDevice, SerialFlags));
 {$ENDIF}
   if FHandle = INVALID_HANDLE_VALUE then  //because THandle is not integer on all platforms!
     SerialCheck(-1)
@@ -1956,7 +1975,7 @@ begin
   SerialCheck(ioctl(FHandle, TCFLSH, TCIOFLUSH));
   {$ELSE}
     {$IFDEF DARWIN}
-    SerialCheck(fpioctl(FHandle, TCIOflush, TCIOFLUSH));
+    SerialCheck(fpioctl(FHandle, TCIOflush, Pointer(PtrInt(TCIOFLUSH))));
     {$ELSE}
     SerialCheck(fpioctl(FHandle, TCFLSH, Pointer(PtrInt(TCIOFLUSH))));
     {$ENDIF}
@@ -2332,7 +2351,6 @@ end;
 // Modif J.P   03/2013
 function GetSerialPortNames: string;
 var
-  Index: Integer;
   Data: string;
   TmpPorts: String;
   sr : TSearchRec;
@@ -2340,7 +2358,9 @@ var
   procedure ScanForPorts( const ThisRootStr : string); // added by PDF
   var theDevice : String;
   var FD : Cint;
+{$IFnDEF DARWIN}        // RPH - Added 14May2016
   var Ser : TSerialStruct;
+{$ENDIF}
   begin
     if FindFirst( ThisRootStr, $FFFFFFFF, sr) = 0 then
     begin
@@ -2348,21 +2368,28 @@ var
         if (sr.Attr and $FFFFFFFF) = Sr.Attr then
         begin
           data := sr.Name;
-          index := length(data);
           theDevice := '/dev/' + data;
 // try to open the device
        FD := fpopen(thedevice,O_RdWr or O_NonBlock or O_NoCtty);
        if FD > 0 then
           begin
 // try to get serial info from the device
+          {$IFDEF DARWIN}       // RPH - Added 14May2016 for OS-X
+           if fpioctl( FD,TIOCEXCL, nil) <> -1  then
+             begin
+              TmpPorts := TmpPorts + '  ' + theDevice;
+              fpclose(FD);
+             end;
+          {$ELSE}
            if fpioctl( FD,TIOCGSERIAL, @Ser) <> -1 then
              begin
 // device is serial if type is not unknown
               if (Ser.typ <> 0)  then
                TmpPorts := TmpPorts + '  ' + theDevice;
-               fpclose(FD);
+              fpclose(FD);
              end;
-           end;
+          {$ENDIF}
+          end;
         end;
       until FindNext(sr) <> 0;
     end;
@@ -2375,7 +2402,12 @@ begin
  //   ScanForPorts( '/dev/pts/*');
     ScanForPorts( '/dev/ttyUSB*');
     ScanForPorts( '/dev/ttyS*');
+  {$IFDEF DARWIN}
+    ScanForPorts( '/dev/tty.usbserial*'); // RPH 14May2016, for FTDI driver
+    ScanForPorts( '/dev/tty.UC-232*');    // RPH 15May2016, for Prolific driver
+  {$ELSE}
     ScanForPorts( '/dev/ttyAM*'); // for ARM board
+  {$ENDIF}
     FindClose(sr);
   finally
     Result:=TmpPorts;
