@@ -1,7 +1,17 @@
-LazSerial v0.1 
-Serial Port Component for Lazarus (windows and linux).
-by Jurassic Pork  03/2013
-This library is Free software; you can rediStribute it and/or modify it
+##LazSerial v0.1 
+##Serial Port Component for Lazarus (windows and linux).
+####by Jurassic Pork  03/2013 
+and
+#### Patch for LazSerial to work with OS-X by rphoover 
+  see: http://forum.lazarus.freepascal.org/index.php?topic=32632.0
+
+  As a part of the patch, a ```new property was added``` to the TBlockSerial class in synaser.pas, 
+  added as``` NonBlock```. The NonBlock property is ```for Unix users (Linux and OS-X included)```.  
+  **When NonBlock is True, the call to the FpOpen method in TBlockSerial.Connect will not block 
+  when an of CTS, DSR, or Carrier are not active.**
+
+
+  This library is Free software; you can rediStribute it and/or modify it
   under the terms of the GNU Library General Public License as published by
   the Free Software Foundation; either version 2 of the License, or (at your
   option) any later version.
@@ -24,16 +34,16 @@ This library is Free software; you can rediStribute it and/or modify it
 - TcomPort component 
 
 
-Features :
-Changed :  baudrate values.
-           stop bits  new value : 1.5
-new event : onstatus
-new property FRcvLineCRLF : if this property is true, you use RecvString
+####Features :
+  
+* changed baudrate values.
+* changed stop bits  new value : 1.5
+* new event : onstatus
+* new property ```FRcvLineCRLF``` : if this property is true, you use RecvString
 in place of RecvPacket when you read data from the port.
-
-new procedure  ShowSetupDialog to open a port settings form :
-the device combobox contain the enumerated ports.
-new procedure to enumerate real serial port on linux ( in synaser).
+* new procedure  ```ShowSetupDialog``` to open a port settings form :
+* the device combobox contain the enumerated ports.
+* new procedure to enumerate real serial port on linux ( in synaser).
 
 Demo : a simulator of serial port gps + serial port receiver :
 you can send NMEA frames ( GGA GLL RMC) to the opened serial port
@@ -44,11 +54,10 @@ In the status bar you can see the status events.
 tested with windows 7 and Ubuntu 12.04
                                        
 if you haven't serial ports in your PC you can use virtual ports :
-1 - WINDOWS 
-To simulate  a paired serial ports on  windows : com0com   
+* 1 - WINDOWS 
+To simulate  a paired serial ports on  windows : com0com
 ex : 
-
-2 - Linux
+* 2 - Linux
 To simulate  a paired serial ports on linux : socat 
 ex :  socat -d -d PTY: PTY:
 
@@ -59,12 +68,4 @@ sudo rfcomm bind  0 xx:xx:xx:xx:xx:xx 1
 
 
 Sorry for my poor english but it isn't my natural language.
-----------------------------------------------------------------------------------------------------------------
 
-Patch for LazSerial to work with OS-X by rphoover http://forum.lazarus.freepascal.org/index.php?topic=32632.0
-
-Serial Port Component for Lazarus (windows, linux, and OS-X)
-
-Attached is a patch on the latest check-in for LazSerial located on GitHub.  The latest check-in on git-hub was dated Aug 28, 2016 as of this post.  For those interested in using LazSerial with OS-X, the attached patch should get you going on OS-X.
-
-As a part of the patch, a new property was added to the TBlockSerial class in synaser.pas, added as NonBlock.  The NonBlock property is for Unix users (Linux and OS-X included).  When NonBlock is True, the call to the FpOpen method in TBlockSerial.Connect will not block when an of CTS, DSR, or Carrier are not active.
